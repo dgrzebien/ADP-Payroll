@@ -83,13 +83,13 @@ public class ADPPayroll {
                             ownerHoursOT = ownerHoursOT + Float.parseFloat(tokens[8]);
                         }
                     } else {
-                        employeeJobEntry.add(id + "," + job + "," + teamMemberHours + "," + teamMemberOT);
+                        employeeJobEntry.add(id + "," + position + "," + teamMemberHours + "," + teamMemberOT);
                         position = "";
                     }
                 
                 } else {
                     //System.out.println("JOB = " + job);
-                    employeeJobEntry.add(id + "," + job + "," + teamMemberHours + "," + teamMemberOT);
+                    employeeJobEntry.add(id + "," + position + "," + teamMemberHours + "," + teamMemberOT);
                     position = "";
 
                     //employeeJobEntry.add(id + ',' + tokens[0] + ',' +  tokens[2] + ',' + tokens[3]
@@ -121,9 +121,8 @@ public class ADPPayroll {
 
         try {
             PrintWriter writer = new PrintWriter(new FileWriter(saveFile));
-            writer.write("First Name,Last Name,Payroll ID,Date,Job,Time In,Time Out,Regular,");
-            writer.write("OT,Ext,Total Hours,Paid Break,Unpaid Break,Rate,Total Pay,Non-Cash,");
-            writer.write("Declared Tips,Tip Share\n");
+            writer.write("First Name,Last Name,Payroll ID,Job,Regular,");
+            writer.write("OT,Tip Share\n");
             for(String employee : sorted.keySet()) {
                 timeEntry = sorted.get(employee);
                 for(String timeRecord : timeEntry) {
@@ -209,6 +208,8 @@ public class ADPPayroll {
 
             // close timecard file
             br.close();
+
+            saveTimeCard();
 
 
         } catch(IOException e) {
