@@ -16,11 +16,16 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class ADPPayroll {
     private static Map<String, List<String>> employeeMap;
-    //private static Map<String, Map<String, String>> employeeMap;
-    //private static Map<String, Map<String,String>> employeeJobMap;
+    private static List<Employee> employeeList = new ArrayList<Employee>();
     private static List<String> employeeJobEntry;
 
-    //private static FileHandler fh = null;
+    private static final String companyID = "25330813";
+
+    private static final char payFrequency = 'S';
+
+    private static final int owner = 101;
+    private static final int teamCaptain = 401;
+    private static final int teamMember = 402;
 
     // processEmployee(String first, String last, String id, BufferedReader br)
     // Employee time card fields:
@@ -45,65 +50,48 @@ public class ADPPayroll {
         // Field 18 = Non-Cash Tips
         // Field 19 = empty
         // Field 20 = Declared Tips
-    public static void processEmployee(String first, String last, String id, BufferedReader br) {
+    public static void processEmployee(String firstName, String lastName, String id, BufferedReader br) {
+        
+        Employee emp = null;
         String[] tokens;
         String line;
-        float teamMemberHours = 0;
-        float teamMemberOT = 0;
-        float teamCaptainHours = 0;
-        float teamCaptainOT = 0;
-        float ownerHours = 0;
-        float ownerHoursOT = 0;
 
         try {
             employeeJobEntry = new ArrayList<String>();
-
             String position = "";
+            emp = new Employee();
+
+            emp.setFirstName(firstName);
+            emp.setLastName(lastName);
+
             while((line = br.readLine()) != null) {
                 line = line.replaceAll("\\$", "");
                 tokens = line.split(",");
 
+                // want to ignore Support and T Team Member entries in the time card because
+                // they are not employees
                 // need to skip lines that have either
                 // Total Team Captain
                 // Total Team Member
                 // Saving employee name, position, regular hours, overtime hours
                 if(!tokens[0].equals("Totals:")) {
                     if(!tokens[0].contains("Total ")) {
-                        if(tokens[2].equals("Team Member")) {
-                            position = tokens[2];
-                            teamMemberHours = teamMemberHours + Float.parseFloat(tokens[7]);
-                            teamMemberOT = teamMemberOT + Float.parseFloat(tokens[8]);
-                        } else if(tokens[2].equals("Team Captain")) {
-                            position = tokens[2];
-                            teamCaptainHours = teamCaptainHours + Float.parseFloat(tokens[7]);
-                            teamCaptainOT = teamCaptainOT + Float.parseFloat(tokens[8]);
-                        } else if(tokens[2].equals("Owner")) {
-                            position = tokens[2];
-                            ownerHours = ownerHours + Float.parseFloat(tokens[7]);
-                            ownerHoursOT = ownerHoursOT + Float.parseFloat(tokens[8]);
+                        if(tokens[2].equals("NON_EMP") || firstName.equals("T")) {
+                            //continue;
+                            // do nothing
+                        } else {
+                            employeeJobEntry.add(tokens[2] + ',' + tokens[7] + ',' + tokens[8]);
                         }
-                    } else {
-                        employeeJobEntry.add(id + "," + position + "," + teamMemberHours + "," + teamMemberOT);
-                        position = "";
-                    }
-                
+                    }  
                 } else {
-                    //System.out.println("JOB = " + job);
-                    employeeJobEntry.add(id + "," + position + "," + teamMemberHours + "," + teamMemberOT);
-                    position = "";
-
-                    //employeeJobEntry.add(id + ',' + tokens[0] + ',' +  tokens[2] + ',' + tokens[3]
-                        //+ ',' + tokens[4] + ',' + tokens[7] + ',' +  + ',' + tokens[9] + ','
-                        //+ tokens[11] + ',' + tokens[12] + ',' + tokens[14] + ',' + tokens[15]
-                        //+ ',' + tokens[16] + ',' + tokens[18] + ',' + tokens[20]);
-
-                    //regularHours = 0;
                     // skip line containing Signature
                     br.readLine();
                     break;
                 }
             }
-            employeeMap.put(first + "," + last, employeeJobEntry);
+            //employeeList.add(emp);
+            employeeMap.put(firstName + ',' + lastName, employeeJobEntry);
+
         } catch(IOException e) {
             e.printStackTrace();
         }
@@ -112,7 +100,6 @@ public class ADPPayroll {
     // saveTimeCard()
     // Save the processed employee time card so it can be uploaded into the payroll tool
     public static void saveTimeCard() {
-        List<String> timeEntry = new ArrayList<String>();
         Map<String, List<String>> sorted = new TreeMap<>(employeeMap);
 
         File saveFile = getFile("Save Payroll Output File");
@@ -120,16 +107,18 @@ public class ADPPayroll {
         //getDateTime();
 
         try {
+
             PrintWriter writer = new PrintWriter(new FileWriter(saveFile));
-            writer.write("First Name,Last Name,Payroll ID,Job,Regular,");
+            writer.write("IID,Pay Frequency,First Name,Last Name,Payroll ID,Job,Regular,");
             writer.write("OT,Tip Share\n");
-            for(String employee : sorted.keySet()) {
-                timeEntry = sorted.get(employee);
-                for(String timeRecord : timeEntry) {
-                    writer.write(employee + ',' + timeRecord + '\n');
-                } 
-            } 
+            for(Map.Entry<String, List<String>> entry : sorted.entrySet()) {
+                for(String s : entry.getValue()) {
+                    writer.write(entry.getKey() + "," + s + "\n");
+                }
+            }
+
             writer.close();
+
         } catch(IOException e) {
             e.printStackTrace();
         }
@@ -138,6 +127,7 @@ public class ADPPayroll {
     // getFile(String title)
     // Get the employee time card file
     public static File getFile(String title) {
+
         JFileChooser fileChooser = new JFileChooser();
         FileNameExtensionFilter csvFilter = new FileNameExtensionFilter("CSV Files", "csv");
         fileChooser.addChoosableFileFilter(csvFilter);
@@ -157,9 +147,11 @@ public class ADPPayroll {
     // validateTimeCardFile()
     // ensure that the file selected is a timecard file
     public static boolean validateTimeCardFile(BufferedReader br) {
+
         String[] firstLine = null;
 
         try {
+
             firstLine = br.readLine().split(",");
             if(!firstLine[0].equals("Employee Timecard")) {
                 JOptionPane.showMessageDialog(
@@ -172,10 +164,12 @@ public class ADPPayroll {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         return firstLine[0].equals("Employee Timecard");
     }
 
     public static void main(String[] args) throws Exception {
+
         employeeMap = new HashMap<String, List<String>>();
 
         try {
@@ -196,13 +190,16 @@ public class ADPPayroll {
 
             // process each employee in the timecard file
             while((inputLine = br.readLine()) != null) {
+                // remove all spaces in string
+                inputLine = inputLine.replaceAll("\\s+", "");
+
                 String[] splits = inputLine.split(",");
 
                 if(splits[0].equals("")) {
                     firstName = splits[2].replace("\"", "");
                     lastName = splits[1].replace("\"", "");;
                     br.readLine();
-                    processEmployee(firstName, lastName, payrollID, br);                    
+                    processEmployee(firstName, lastName, payrollID, br);
                 }
             }
 
@@ -210,7 +207,6 @@ public class ADPPayroll {
             br.close();
 
             saveTimeCard();
-
 
         } catch(IOException e) {
             e.printStackTrace();
